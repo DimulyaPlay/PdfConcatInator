@@ -1,4 +1,5 @@
 import os
+import shutil
 
 import fitz  # PyMuPDF
 
@@ -48,11 +49,13 @@ def merge_four_pages_into_one(input_pdf_path, tempdir):
     return output_pdf_path
 
 
-def merge_pdfs(output_pdf_path, pdf_list):
+def merge_pdfs(output_pdf_path, pdf_list, tempdir):
+    temp_file = os.path.join(tempdir, os.path.basename(output_pdf_path))
     merged_pdf = fitz.open()
     for pdf_path in pdf_list:
         pdf_doc = fitz.open(pdf_path)
         merged_pdf.insert_pdf(pdf_doc)
         pdf_doc.close()
-    merged_pdf.save(output_pdf_path)
+    merged_pdf.save(temp_file)
     merged_pdf.close()
+    shutil.copy(temp_file, output_pdf_path)

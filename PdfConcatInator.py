@@ -100,6 +100,7 @@ class FileActionDialog(QDialog):
             self.merge_with_another_pdf(None)
 
     def save_as_word(self, file_paths):
+        tempdir = tempfile.mkdtemp()
         for file_path in file_paths:
             default_name = os.path.basename(file_path)
             save_path, _ = QFileDialog.getSaveFileName(self, "Сохранить документ как.", default_name,
@@ -108,18 +109,21 @@ class FileActionDialog(QDialog):
                 return
             print(f"Сохранение {file_path} в Word")
             try:
+                temp_file = os.path.join(tempdir, os.path.basename(save_path))
                 pythoncom.CoInitialize()
                 word_app = win32.Dispatch("Word.Application")
                 doc = word_app.Documents.Open(file_path)
-                doc.SaveAs(save_path, FileFormat=16)  # 16 - формат DOCX
+                doc.SaveAs(temp_file, FileFormat=16)  # 16 - формат DOCX
                 print(f"Документ сохранен как {save_path}")
+                shutil.copy(temp_file, save_path)
+                shutil.rmtree(tempdir)
             except Exception as e:
                 traceback.print_exc()
-                print(e)
 
     def save_as_pdf(self, file_paths, dir=None):
         # Извлекаем только имя файла для предложения по умолчанию
         saved_paths = []
+        tempdir = tempfile.mkdtemp()
         if dir:
             save_dir = dir
         for file_path in file_paths:
@@ -136,14 +140,16 @@ class FileActionDialog(QDialog):
 
             print(f"Сохранение {file_path} в PDF")
             try:
+                temp_file = os.path.join(tempdir, os.path.basename(save_path))
                 pythoncom.CoInitialize()
                 word_app = win32.Dispatch("Word.Application")
                 doc = word_app.Documents.Open(file_path)
-                doc.SaveAs(save_path, FileFormat=17)  # 17 - формат PDF
+                doc.SaveAs(temp_file, FileFormat=17)  # 17 - формат PDF
                 print(f"Документ сохранен как {save_path}")
+                shutil.copy(temp_file, save_path)
+                shutil.rmtree(tempdir)
             except Exception as e:
                 traceback.print_exc()
-                print(e)
         return saved_paths
 
     def merge_with_another_pdf(self, file_paths):
@@ -166,8 +172,7 @@ class FileActionDialog(QDialog):
                 new_fp = self.make_layout(fp, lo, tempdir)
                 list_for_concat.append(new_fp)
             if list_for_concat:
-                merge_pdfs(save_path, list_for_concat)
-                os.startfile(save_path)
+                merge_pdfs(save_path, list_for_concat, tempdir)
         shutil.rmtree(tempdir)
 
     def make_layout(self, filepath, layout, tempdir):
