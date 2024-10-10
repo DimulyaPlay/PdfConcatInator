@@ -13,7 +13,7 @@ import psutil
 import shutil
 import tempfile
 from pdfmerger import merge_two_pages_into_one, merge_four_pages_into_one, merge_pdfs
-#  pyinstaller.exe --windowed --noconfirm --icon "C:\Users\CourtUser\Desktop\release\WordSaveToPDF\icon.ico" --add-data "C:\Users\CourtUser\Desktop\release\WordSaveToPDF\icon.ico;." --add-data "C:\Users\CourtUser\Desktop\release\WordSaveToPDF\PdfConcatInator_update_and_start.bat;." --add-data "C:\Users\CourtUser\Desktop\release\WordSaveToPDF\assets;assets"  C:\Users\CourtUser\Desktop\release\WordSaveToPDF\PdfConcatInator.py
+#  pyinstaller.exe --windowed --noconfirm --icon "C:\Users\CourtUser\Desktop\release\WordSaveToPDF\icon.ico" --add-data "C:\Users\CourtUser\Desktop\release\WordSaveToPDF\icon.ico;." --add-data "C:\Users\CourtUser\Desktop\release\WordSaveToPDF\update.cfg;." --add-data "C:\Users\CourtUser\Desktop\release\WordSaveToPDF\update.exe;." --add-data "C:\Users\CourtUser\Desktop\release\WordSaveToPDF\assets;assets"  C:\Users\CourtUser\Desktop\release\WordSaveToPDF\PdfConcatInator.py
 
 
 class FileActionDialog(QDialog):

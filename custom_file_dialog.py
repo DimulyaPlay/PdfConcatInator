@@ -10,6 +10,7 @@ class CustomFileDialog(QDialog):
         super().__init__()
         self.setMinimumWidth(400)
         self.setWindowTitle("PDF+")
+        self.setWindowIcon(QIcon('icon.ico'))
         self.file_paths = file_paths  # Список переданных файлов
         self.setAcceptDrops(True)
         # Основной макет диалога
@@ -18,7 +19,7 @@ class CustomFileDialog(QDialog):
 
         # Инструкция
         label = QLabel()
-        instr = '  1. Для добавления файлов перетаскивайте их В это окно. \n  2. Чтобы удалить, перетаскивайте ИЗ окна.\n  2. Чтобы задать порядок перемещайте файлы между собой. \n  3. Укажите макет ' \
+        instr = '  1. Для добавления файлов перетаскивайте их В это окно. \n  2. Чтобы удалить, нажмите правой кнопкой мыши.\n  2. Чтобы задать порядок перемещайте файлы между собой. \n  3. Укажите макет ' \
                 'расположения для файлов и нажмите объединить.'
 
         label.setText(instr)
@@ -52,12 +53,21 @@ class CustomFileDialog(QDialog):
 
         # Горизонтальный макет для виджета файла
         file_layout = QHBoxLayout(file_widget)
-        file_layout.setContentsMargins(3,3,3,3)
+        file_layout.setContentsMargins(3, 3, 3, 3)
 
         # Имя файла
         file_label = QLabel(os.path.basename(file_path))
         file_label.setToolTip(file_path)  # Показываем полный путь при наведении
+        file_label.mouseDoubleClickEvent = lambda e, filepath = file_path: os.startfile(filepath)
         file_layout.addWidget(file_label, stretch=1)
+        # Обработка события правой кнопки мыши для удаления
+        def remove_item(event):
+            if event.button() == Qt.RightButton:
+                row = self.file_list_widget.row(file_item)
+                self.file_list_widget.takeItem(row)
+            else:
+                event.ignore()
+        file_label.mousePressEvent = remove_item
 
         # Радиокнопки для выбора макета (1 на 1, 2 на 1, 4 на 1)
         self.add_layout_radio_buttons(file_layout)
@@ -141,10 +151,5 @@ class CustomFileDialog(QDialog):
                 (current := self.file_list_widget.currentRow()) + 1 or
                 (current == self.file_list_widget.count() - 1 and target == -1)):
             event.ignore()
-        elif not self.file_list_widget.geometry().contains(self.file_list_widget.mapFromGlobal(QCursor.pos())):
-            item = self.file_list_widget.currentItem()
-            if item:
-                self.file_list_widget.takeItem(self.file_list_widget.row(item))
-                print('removing')
         else:
             event.accept()
