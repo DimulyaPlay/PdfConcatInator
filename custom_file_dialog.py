@@ -1,8 +1,15 @@
-import os
+import os, sys
 from PySide2.QtWidgets import (QDialog, QVBoxLayout, QLabel, QPushButton, QRadioButton, QListWidget,
-                               QListWidgetItem, QWidget, QHBoxLayout, QApplication, QAbstractItemView)
+                               QListWidgetItem, QWidget, QHBoxLayout, QApplication, QAbstractItemView, QCheckBox, QFileDialog)
 from PySide2.QtGui import QIcon, QPixmap, QDragEnterEvent, QDropEvent, QCursor
 from PySide2.QtCore import QSize, Qt
+
+
+def resource_path(relative_path):
+    """Получает абсолютный путь к ресурсу, работает и при --onefile, и при отладке"""
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
 
 
 class CustomFileDialog(QDialog):
@@ -10,7 +17,7 @@ class CustomFileDialog(QDialog):
         super().__init__()
         self.setMinimumWidth(400)
         self.setWindowTitle("PDF+")
-        self.setWindowIcon(QIcon('icon.ico'))
+        self.setWindowIcon(QIcon(resource_path('icon.ico')))
         self.file_paths = file_paths  # Список переданных файлов
         self.setAcceptDrops(True)
         # Основной макет диалога
@@ -19,8 +26,12 @@ class CustomFileDialog(QDialog):
 
         # Инструкция
         label = QLabel()
-        instr = '  1. Для добавления файлов перетаскивайте их В это окно. \n  2. Чтобы удалить, нажмите правой кнопкой мыши.\n  2. Чтобы задать порядок перемещайте файлы между собой. \n  3. Укажите макет ' \
-                'расположения для файлов и нажмите объединить.'
+        instr = ('  1. Добавьте файлы перетаскивая их В это окно или кнопкой внизу окна.'
+                 '\n  3. Чтобы удалить, нажмите правой кнопкой мыши по названию документа.'
+                 '\n  4. Чтобы задать порядок перемещайте файлы между собой. '
+                 '\n  5. Галочка "Привести к формату A4" сжимает или увеличивает все '
+                 '\n   страницы до размеров А4 (может быть медленно если много страниц) '
+                 '\n  6. Укажите макет расположения для файлов и нажмите объединить.')
 
         label.setText(instr)
         label.setWordWrap(True)
@@ -39,10 +50,32 @@ class CustomFileDialog(QDialog):
         for file_path in file_paths:
             self.add_file_item(file_path)
 
-        # Кнопка подтверждения
+
+        # Чекбокс приведения к A4
+        self.normalize_checkbox = QCheckBox("Привести к формату A4")
+        layout.addWidget(self.normalize_checkbox)
+
+        # Контейнер кнопок
+        button_layout = QHBoxLayout()
+
+        self.add_button = QPushButton("Добавить документ")
+        self.add_button.clicked.connect(self.add_files_from_dialog)
+        button_layout.addWidget(self.add_button)
+
         self.confirm_button = QPushButton("Объединить")
         self.confirm_button.clicked.connect(self.accept)
-        layout.addWidget(self.confirm_button)
+        button_layout.addWidget(self.confirm_button)
+
+        layout.addLayout(button_layout)
+
+    def add_files_from_dialog(self):
+        file_dialog = QFileDialog(self)
+        file_dialog.setFileMode(QFileDialog.ExistingFiles)
+        file_dialog.setNameFilter("PDF Files (*.pdf)")
+        if file_dialog.exec_():
+            selected_files = file_dialog.selectedFiles()
+            for path in selected_files:
+                self.add_file_item(path)
 
     def add_file_item(self, file_path):
         """Добавляем файл как элемент списка"""
@@ -82,18 +115,18 @@ class CustomFileDialog(QDialog):
         """Добавляем радиокнопки с иконками макетов в указанный лейаут"""
         iconsizex, iconsizey = 26, 26
         layout_1x1_radio = QRadioButton()
-        layout_1x1_radio.setIcon(QIcon(QPixmap('assets/1.png')))
+        layout_1x1_radio.setIcon(QIcon(QPixmap(resource_path('assets/1.png'))))
         layout_1x1_radio.setIconSize(QSize(iconsizex, iconsizey))
         layout_1x1_radio.setChecked(True)  # Установим по умолчанию 1 на 1
         layout.addWidget(layout_1x1_radio)
 
         layout_2x1_radio = QRadioButton()
-        layout_2x1_radio.setIcon(QIcon(QPixmap('assets/2.png')))
+        layout_2x1_radio.setIcon(QIcon(QPixmap(resource_path('assets/2.png'))))
         layout_2x1_radio.setIconSize(QSize(iconsizex, iconsizey))
         layout.addWidget(layout_2x1_radio)
 
         layout_4x1_radio = QRadioButton()
-        layout_4x1_radio.setIcon(QIcon(QPixmap('assets/4.png')))
+        layout_4x1_radio.setIcon(QIcon(QPixmap(resource_path('assets/4.png'))))
         layout_4x1_radio.setIconSize(QSize(iconsizex, iconsizey))
         layout.addWidget(layout_4x1_radio)
 

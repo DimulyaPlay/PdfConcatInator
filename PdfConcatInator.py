@@ -1,9 +1,8 @@
 import traceback
-
 from PySide2.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QAction, QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxLayout, QDialog, QFileDialog, QCheckBox, QSizePolicy, QStyleFactory
 from PySide2.QtGui import QIcon, QCursor, QFont
 from PySide2.QtCore import Qt, QSize, QTranslator, QLocale, QLibraryInfo
-from custom_file_dialog import CustomFileDialog
+from custom_file_dialog import CustomFileDialog, resource_path
 import pythoncom
 import win32com.client as win32
 import os
@@ -12,8 +11,8 @@ from functools import partial
 import psutil
 import shutil
 import tempfile
-from pdfmerger import merge_two_pages_into_one, merge_four_pages_into_one, merge_pdfs
-#  pyinstaller.exe --windowed --noconfirm --icon "C:\Users\CourtUser\Desktop\release\WordSaveToPDF\icon.ico" --add-data "C:\Users\CourtUser\Desktop\release\WordSaveToPDF\icon.ico;." --add-data "C:\Users\CourtUser\Desktop\release\WordSaveToPDF\update.cfg;." --add-data "C:\Users\CourtUser\Desktop\release\WordSaveToPDF\update.exe;." --add-data "C:\Users\CourtUser\Desktop\release\WordSaveToPDF\assets;assets"  C:\Users\CourtUser\Desktop\release\WordSaveToPDF\PdfConcatInator.py
+from pdfmerger import merge_two_pages_into_one, merge_four_pages_into_one, merge_pdfs, normalize_pdf_in_place
+#  pyinstaller.exe --onefile --windowed --noconfirm --icon "C:\Users\CourtUser\Documents\PyCharmProjects\WordSaveToPDF\icon.ico" --add-data "C:\Users\CourtUser\Documents\PyCharmProjects\WordSaveToPDF\icon.ico;." --add-data "C:\Users\CourtUser\Documents\PyCharmProjects\WordSaveToPDF\assets;assets"  C:\Users\CourtUser\Documents\PyCharmProjects\WordSaveToPDF\PdfConcatInator.py
 
 
 class FileActionDialog(QDialog):
@@ -26,8 +25,10 @@ class FileActionDialog(QDialog):
 
         # Словарь для хранения файлов и их чекбоксов
         self.file_checkboxes = {}
-
+        self.layout().addWidget(QLabel('Откройте документ в word чтобы он появился в списке'))
         # Для каждого файла создаем горизонтальный контейнер с чекбоксом и меткой
+        if not word_files:
+            self.layout().addWidget(QLabel('-Открытых файлов в word не найдено-'))
         for file_path in word_files:
             file_layout = QHBoxLayout()
 
@@ -49,27 +50,31 @@ class FileActionDialog(QDialog):
         # Контейнер для кнопок
         button_layout = QHBoxLayout()
 
-        # Кнопка "Сохранить как PDF"
-        save_pdf_btn = QPushButton()
-        save_pdf_btn.clicked.connect(self.save_selected_as_pdf)
-        save_pdf_btn.setEnabled(bool(word_files))
-        save_pdf_btn.setIcon(QIcon('assets/pdf.png'))
-        save_pdf_btn.setIconSize(QSize(28, 28))
-        button_layout.addWidget(save_pdf_btn)
 
         # Кнопка "Объединить в PDF"
-        merge_pdf_btn = QPushButton()
+        merge_pdf_btn = QPushButton('Объединить pdf')
         merge_pdf_btn.clicked.connect(self.merge_selected_pdfs)
-        merge_pdf_btn.setIcon(QIcon('assets/pdf_plus.png'))
+        merge_pdf_btn.setIcon(QIcon(resource_path('assets/pdf_plus.png')))
         merge_pdf_btn.setIconSize(QSize(28, 28))
+        merge_pdf_btn.setToolTip('Объединить word с pdf')
         button_layout.addWidget(merge_pdf_btn)
 
+        # Кнопка "Сохранить как PDF"
+        save_pdf_btn = QPushButton('Сохранить word в pdf')
+        save_pdf_btn.clicked.connect(self.save_selected_as_pdf)
+        save_pdf_btn.setEnabled(bool(word_files))
+        save_pdf_btn.setIcon(QIcon(resource_path('assets/pdf.png')))
+        save_pdf_btn.setIconSize(QSize(28, 28))
+        save_pdf_btn.setToolTip('Сохранить word в pdf')
+        button_layout.addWidget(save_pdf_btn)
+
         # Кнопка "Сохранить как Word"
-        save_word_btn = QPushButton()
+        save_word_btn = QPushButton('Сохранить word в папку')
         save_word_btn.clicked.connect(self.save_selected_as_word)
         save_word_btn.setEnabled(bool(word_files))
-        save_word_btn.setIcon(QIcon('assets/word.png'))
+        save_word_btn.setIcon(QIcon(resource_path('assets/word.png')))
         save_word_btn.setIconSize(QSize(28, 28))
+        save_word_btn.setToolTip('Сохранить word в папку')
         button_layout.addWidget(save_word_btn)
 
         # Добавляем кнопки в нижнюю часть окна
@@ -121,7 +126,6 @@ class FileActionDialog(QDialog):
                 traceback.print_exc()
 
     def save_as_pdf(self, file_paths, dir=None):
-        # Извлекаем только имя файла для предложения по умолчанию
         saved_paths = []
         tempdir = tempfile.mkdtemp()
         if dir:
@@ -153,7 +157,6 @@ class FileActionDialog(QDialog):
         return saved_paths
 
     def merge_with_another_pdf(self, file_paths):
-        # Извлекаем только имя файла для предложения по умолчанию
         tempdir = tempfile.mkdtemp()
         if file_paths:
             saved_pdf_paths = self.save_as_pdf(file_paths, dir=tempdir)
@@ -173,6 +176,8 @@ class FileActionDialog(QDialog):
                 list_for_concat.append(new_fp)
             if list_for_concat:
                 merge_pdfs(save_path, list_for_concat, tempdir)
+                if dialog.normalize_checkbox.isChecked():
+                    normalize_pdf_in_place(save_path)
         shutil.rmtree(tempdir)
 
     def make_layout(self, filepath, layout, tempdir):
@@ -189,11 +194,7 @@ class WordTrayApp(QSystemTrayIcon, QWidget):
         super().__init__(icon, parent)
         self.menu = QMenu()
         self.create_context_menu()
-
-        # Привязываем событие нажатия на иконку трея
         self.activated.connect(self.on_tray_icon_activated)
-
-        # Показ иконки трея
         self.show()
 
     def create_context_menu(self):
@@ -255,5 +256,5 @@ if __name__ == "__main__":
     translator.load("qtbase_" + locale, path)
     app.installTranslator(translator)
     app.setStyle(QStyleFactory.create("Fusion"))
-    tray_app = WordTrayApp(QIcon("icon.ico"))
+    tray_app = WordTrayApp(QIcon(resource_path("icon.ico")))
     sys.exit(app.exec_())
