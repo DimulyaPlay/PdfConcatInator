@@ -1,6 +1,6 @@
 import os
 import shutil
-from PyPDF2 import PdfReader, PdfWriter, Transformation, PageObject
+from pypdf import PdfReader, PdfWriter, Transformation, PageObject
 
 A4_WIDTH = 595.2756
 A4_HEIGHT = 841.8898
@@ -9,26 +9,19 @@ def merge_two_pages_into_one(input_pdf_path, tempdir):
     output_pdf_path = os.path.join(tempdir, "2on1_" + os.path.basename(input_pdf_path))
     reader = PdfReader(input_pdf_path)
     writer = PdfWriter()
-
-    a4_width, a4_height = A4_HEIGHT, A4_WIDTH
+    a4_width, a4_height = 842, 595
     for i in range(0, len(reader.pages), 2):
-        new_page = PageObject.create_blank_page(width=a4_width, height=a4_height)
-
-        # Левая страница
+        new_page = writer.add_blank_page(width=a4_width, height=a4_height)
         page1 = reader.pages[i]
         orig_width1 = float(page1.mediabox.width)
         orig_height1 = float(page1.mediabox.height)
         scale1 = min((a4_width / 2) / orig_width1, a4_height / orig_height1)
         tx1 = 0
         ty1 = (a4_height - orig_height1 * scale1) / 2
-
-        # Создаем копию
-        page1_copy = PageObject.create_blank_page(width=orig_width1, height=orig_height1)
-        page1_copy.merge_page(page1)
-        page1_copy.add_transformation(Transformation().scale(scale1).translate(tx1, ty1))
-        new_page.merge_page(page1_copy)
-
-        # Правая страница (если есть)
+        new_page.merge_transformed_page(
+            page1,
+            Transformation().scale(scale1).translate(tx1, ty1)
+        )
         if i + 1 < len(reader.pages):
             page2 = reader.pages[i + 1]
             orig_width2 = float(page2.mediabox.width)
@@ -37,13 +30,10 @@ def merge_two_pages_into_one(input_pdf_path, tempdir):
             tx2 = a4_width / 2
             ty2 = (a4_height - orig_height2 * scale2) / 2
 
-            page2_copy = PageObject.create_blank_page(width=orig_width2, height=orig_height2)
-            page2_copy.merge_page(page2)
-            page2_copy.add_transformation(Transformation().scale(scale2).translate(tx2, ty2))
-            new_page.merge_page(page2_copy)
-
-        writer.add_page(new_page)
-
+            new_page.merge_transformed_page(
+                page2,
+                Transformation().scale(scale2).translate(tx2, ty2)
+            )
     with open(output_pdf_path, "wb") as f:
         writer.write(f)
     return output_pdf_path
